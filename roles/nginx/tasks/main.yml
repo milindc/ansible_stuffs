@@ -1,0 +1,17 @@
+---
+
+- name: Installing Nginx...
+  apt: name=nginx state=present
+
+- name: Starting Nginx...
+  service: name=nginx state=started enabled=yes
+
+- name: Uploading nginx.conf template...
+  template:
+      src: nginx.conf.j2
+      dest: /etc/nginx/nginx.conf
+      owner: root
+      group: root
+      mode: 0644
+  become: yes
+  notify: restart nginx

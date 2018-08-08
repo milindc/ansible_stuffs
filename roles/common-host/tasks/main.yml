@@ -1,0 +1,23 @@
+- name: Updating apt package...  
+  shell: apt-get update
+  become: yes
+
+- name: Installing common packages...
+  apt: name={{ item }} state=present update_cache=yes
+  with_items:
+   - htop
+   - vim-nox
+   - wget
+   - curl
+   - iotop
+   - telnet
+   - rsync
+   - python-apt
+   - fail2ban
+   - apt-transport-https
+   - ca-certificates
+   - tmux
+   - git
+  become: yes
+  notify: restart common services
+

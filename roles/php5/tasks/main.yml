@@ -1,0 +1,40 @@
+- name: Installing common properties for PHP...
+  apt:
+    name: python-software-properties
+    state: present
+
+- name: Installing PHP Repository...
+  apt_repository: repo=ppa:ondrej/php state=present
+
+- name: Updating apt package...
+  apt:
+    update_cache: yes
+
+- name: Installing PHP 5.6
+  apt:
+    name: php5.6
+    state: present
+
+- name: Installing PHP5.6 packages...
+  apt: name={{ item }} state=latest update_cache=yes
+  with_items:
+   - php5.6-cli 
+   - php5.6-fpm 
+   - php5.6-gd 
+   - php5.6-json 
+   - php5.6-mysql
+   - php5.6-gd
+   - php5.6-curl
+   - php5.6-readline
+   - php5.6-xml
+  become: yes
+
+- name: Uploading customized www pool configuration
+  template:
+      src: pool.j2
+      dest: /etc/php/5.6/fpm/pool.d/
+      owner: root
+      group: root
+      mode: 0644
+  become: yes
+

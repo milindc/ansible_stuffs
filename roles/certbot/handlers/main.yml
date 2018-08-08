@@ -1,0 +1,6 @@
+---
+- name: Reloading nginx
+  service:
+      name: nginx
+      enabled: yes
+      state: restarted

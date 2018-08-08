@@ -1,0 +1,83 @@
+---
+- name: Downloading Drush...
+  get_url:
+      url: "{{drupal.drush_url}}"
+      dest: "/usr/local/bin/drush"
+      mode: 0755
+  become: yes
+
+- name: test drush install
+  shell: drush core-status
+
+- name: Creating drupal root and project dir...
+  file: 
+    name: "{{drupal.project_root}}"
+    state: directory
+    owner: "{{ansible_user_id}}"
+    group: "{{ansible_user_id}}"
+    recurse: yes
+  become: yes
+
+- name: Downloading drupal using drush...
+  shell: drush dl "{{drupal.drupal_version}}" --drupal-project-rename="{{drupal.project_domain}}" --yes
+  args:
+      chdir: "{{drupal.project_root}}"
+      creates: "{{drupal.project_root}}/{{drupal.project_domain}}"
+      executable: /bin/bash
+
+- name: Creating drupal database...
+  mysql_db:
+      name: "{{drupal.db_name}}"
+  become: yes
+
+- name: Creating drupal db user...
+  mysql_user:
+      name: "{{drupal.db_user}}"
+      password: "{{drupal.db_pass}}"
+      priv: '{{drupal.db_name}}.*:ALL'
+      state: present
+  become: yes
+
+- name: Installing drupal using drush...
+  shell: drush site-install standard --db-url=mysql://"{{drupal.db_user}}":"{{drupal.db_pass}}"@localhost:3306/"{{drupal.db_name}}" --site-name="{{drupal.project_domain}}" --account-mail="{{drupal.account_email}}" --account-name="{{drupal.account_name}}" --account-pass="{{drupal.account_pass}}" --yes && touch "{{drupal.project_root}}/{{drupal.project_domain}}/{{drupal.provision_file}}"
+  args:
+      chdir: "{{drupal.project_root}}/{{drupal.project_domain}}"
+      creates: "{{drupal.project_root}}/{{drupal.project_domain}}/{{drupal.provision_file}}"
+      executable: /bin/bash
+
+- name: Creating private files directory...
+  file:
+      path: "{{drupal.private_dir}}"
+      state: directory
+      owner: "{{ansible_user_id}}"
+      group: "{{drupal.fpm_user}}"
+      mode: "775"
+  become: yes
+
+- name: Fix default site perms after drupal installed...
+  file:
+      path: "{{drupal.project_root}}/{{drupal.project_domain}}/sites/default"
+      mode: 0775
+  become: yes
+
+- name: Updating permission for default site files directory...
+  file:
+      path: "{{drupal.project_root}}/{{drupal.project_domain}}/sites/default/files"
+      owner: "{{ansible_user_id}}"
+      group: "{{drupal.fpm_user}}"
+      mode: 0775
+  become: yes
+
+- name: Uploading nginx configuration for HTTPS...
+  template: src=drupal_nginx_https.j2 dest="/etc/nginx/conf.d/{{drupal.project_domain}}.conf" owner=root group=root mode=0644
+  when: site.ssl
+  become: yes
+
+- name: Restarting Nginx to enable site...
+  service:
+      name: nginx
+      state: restarted
+  become: yes
+
+- include: modules.yml
+- include: file_permissions.yml

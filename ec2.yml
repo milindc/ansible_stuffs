@@ -1,0 +1,89 @@
+---
+  - name: Provision an EC2 Instance
+    hosts: localhost
+    connection: localhost
+    gather_facts: False
+    tags: provisioning
+    # Necessary Variables for creating/provisioning the EC2 Instance
+    vars:
+      region: ap-south-1
+      #aws_access_key: AKIAJIZY3WV64RNMH4MA # Access key -old AKIAJ7CMNS2XBGO237BA
+      #aws_secret_key: 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 # Secret -old S7yFz0x85g3PzLqRORSvW7IfXRMP2DWnMK6h9c3R
+      instance_type: t2.micro
+      security_group: webserver-sg # Change the security group name here
+      image: ami-03955649bf60f2a13 # This is an AMI i created myself -old ami-03e27f3b183325a75 ami-08cad725b0c94133c
+      keypair: ec2_mumbai # This is one of my keys that i already have in AWS
+      project_name: compucorp
+      env: staging
+      app_code_user: "ubuntu" # remote user
+      hoststring: "ansible_ssh_user=ubuntu ansible_ssh_private_key_file=ec2_mumbai.pem"
+      hostpath: "nodes.txt"
+      count: 1
+
+
+    # Task that will be used to Launch/Create an EC2 Instance
+    tasks:
+
+      - name: Creating a AWS Security Group
+        local_action: 
+          module: ec2_group
+          name: "{{ security_group }}"
+          description: Security Group for webserver Servers
+          region: "{{ region }}"
+          rules:
+            - proto: tcp
+              from_port: 22
+              to_port: 22
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 80
+              to_port: 80
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 443
+              to_port: 443
+              cidr_ip: 0.0.0.0/0
+          rules_egress:
+            - proto: all
+              cidr_ip: 0.0.0.0/0
+        register: basic_firewall
+
+      - name: Launch the new EC2 Instance
+        aws_access_key: "{{ aws_access_key  }}"
+        aws_secret_key: "{{ aws_secret_key  }}"
+        local_action: ec2 
+                      group={{ security_group }}
+                      instance_type={{ instance_type}}
+                      image={{ image }}
+                      wait=true
+                      region={{ region }}
+                      keypair={{ keypair }}
+                      count={{count}}
+        register: ec2
+
+      - name: Add the newly created EC2 instance to the local inventory
+        local_action: lineinfile 
+                      dest="{{hostpath}}"
+                      regexp={{ item.public_ip }}
+                      insertafter="[drupal]"
+                      line="{{ item.public_ip }} {{hoststring}}"
+        with_items: '{{ ec2.instances }}'
+
+      - name: Wait for SSH to come up
+        wait_for: host={{ item.public_ip }} port=22 state=started
+        with_items: '{{ ec2.instances }}'
+
+      - name: Add tag to Instance
+        local_action: ec2_tag resource={{ item.id }} region={{ region }} state=present
+        with_items: '{{ ec2.instances }}'
+        args:
+          tags:
+            Name: webserver
+
+      - wait_for: path={{ hostpath }} search_regex={{hoststring}}
+
+      - name: Generate ssh key for ubuntu user
+        user: name={{ app_code_user }} generate_ssh_key=yes
+
+      - name: Adding public keys into EC2 Instance to get SSH login
+        authorized_key: user={{ app_code_user }} key="{{ lookup('file', '/home/ubuntu/.ssh/id_rsa.pub') }}" state=present manage_dir=yes

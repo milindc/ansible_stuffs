@@ -1,0 +1,30 @@
+---
+- name: Downloading Percona...
+  get_url:
+    url: "{{percona.repo_deb_url}}"
+    dest: "/tmp/{{ percona.repo_deb_url.split('/')[-1] }}"
+
+- name: Installing Percona...
+  apt: deb="/tmp/{{ percona.repo_deb_url.split('/')[-1] }}"
+  become: yes
+
+- name: Installing Percona Database...
+  apt: name={{ item }} state=latest update_cache=yes
+  with_items:
+    - percona-server-server-{{percona.version}}
+    - percona-server-common-{{percona.version}}
+    - percona-server-client-{{percona.version}}
+  environment:
+    DEBIAN_FRONTEND: "{{ percona.debian_frontend }}"
+  become: yes
+  notify: enable mysql
+
+- name: Installing Python Mysql...
+  apt: name=python-mysqldb state=latest update_cache=yes
+  become: yes
+
+- name: Starting Mysql...
+  service:
+    name: mysql
+    state: started
+  become: yes
