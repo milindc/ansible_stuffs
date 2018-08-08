@@ -8,10 +8,10 @@
     - variables/ec2_configs.yml
 
   roles:
-#    - common-host
-#    - php5
-#    - percona
-#    - nginx
-#    - drupal
+    - common-host
+    - php5
+    - percona
+    - nginx
+    - drupal
     - civicrm
-#    - { role: certbot, when: site.ssl }
+    - { role: certbot, when: site.ssl }
