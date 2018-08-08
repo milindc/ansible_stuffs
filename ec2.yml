@@ -7,8 +7,6 @@
     # Necessary Variables for creating/provisioning the EC2 Instance
     vars:
       region: ap-south-1
-      #aws_access_key: AKIAJIZY3WV64RNMH4MA # Access key -old AKIAJ7CMNS2XBGO237BA
-      #aws_secret_key: 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 # Secret -old S7yFz0x85g3PzLqRORSvW7IfXRMP2DWnMK6h9c3R
       instance_type: t2.micro
       security_group: webserver-sg # Change the security group name here
       image: ami-03955649bf60f2a13 # This is an AMI i created myself -old ami-03e27f3b183325a75 ami-08cad725b0c94133c
